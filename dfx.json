@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "defaults": {
+    "build": {
+      "output": "src/declarations"
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8080",
+      "type": "ephemeral"
+    },
+    "ic": {
+      "providers": ["https://ic0.app"]
+    }
+  },
+  "canisters": {
+    "witness": {
+      "type": "motoko",
+      "main": "motoko/witness/Witness.mo",
+      "candid": "motoko/witness/Witness.did",
+      "optimize": "cycles"
+    },
+    "router": {
+      "type": "motoko",
+      "main": "motoko/router/Router.mo",
+      "candid": "motoko/router/Router.did",
+      "optimize": "cycles",
+      "dependencies": ["ledger"]
+    },
+    "i1": {
+      "type": "motoko",
+      "main": "motoko/i1/I1.mo",
+      "candid": "motoko/i1/I1.did",
+      "optimize": "cycles"
+    },
+    "i2": {
+      "type": "motoko",
+      "main": "motoko/i2/I2.mo",
+      "candid": "motoko/i2/I2.did",
+      "optimize": "cycles"
+    },
+    "factory": {
+      "type": "motoko",
+      "main": "motoko/factory/Factory.mo",
+      "candid": "motoko/factory/Factory.did",
+      "optimize": "cycles"
+    },
+    "ledger": {
+      "type": "custom",
+      "candid": "deps/ledger.did",
+      "wasm": "deps/ledger-canister.wasm.gz",
+      "remote": {
+        "id": {
+          "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai",
+          "local": "ryjl3-tyaaa-aaaaa-aaaba-cai"
+        }
+      }
+    },
+    "storage": {
+      "main": "motoko/storage/Storage.mo",
+      "candid": "motoko/storage/Storage.did",
+      "type": "motoko",
+      "optimize": "cycles"
+    },
+    "noticeboard": {
+      "main": "motoko/noticeboard/Noticeboard.mo",
+      "type": "motoko",
+      "optimize": "cycles"
+    },
+    "crypto": {
+      "type": "rust",
+      "package": "ICPP-crypto",
+      "candid": "crypto/Crypto.did",
+      "optimize": "cycles"
+    },
+    "registry": {
+      "type": "motoko",
+      "main": "motoko/registry/Registry.mo",
+      "candid": "motoko/registry/Registry.did"
+    },
+    "icpp_ui": {
+      "type": "assets",
+      "source": ["icpp-ui/dist"]
+    }
+  }
+}

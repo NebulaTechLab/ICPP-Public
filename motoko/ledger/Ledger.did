@@ -1,0 +1,118 @@
+// ===================================================
+// DID for Ledger Canister
+// Privacy ICP (ICPP)
+//
+// Version -> 2.0.01
+// Date    -> 25 November 2025
+// Status  -> Public release ver:2 subver:0 release:01
+//
+// Code developed by @Troesma
+// ===================================================
+
+type Subaccount = blob;
+type Account = record { owner : principal; subaccount : opt Subaccount };
+
+type TransferArg = record {
+  from_subaccount : opt Subaccount;
+  to : Account;
+  amount : nat;
+  fee : opt nat;
+  memo : opt blob;
+  created_at_time : opt nat64;
+};
+
+type TransferFromArg = record {
+  from : Account;
+  to : Account;
+  amount : nat;
+  fee : opt nat;
+  memo : opt blob;
+  created_at_time : opt nat64;
+  spender_subaccount : opt Subaccount;
+};
+
+type ApproveArg = record {
+  from_subaccount : opt Subaccount;
+  spender : Account;
+  amount : nat;
+  expected_allowance : opt nat;
+  expires_at : opt nat64;
+  fee : opt nat;
+  memo : opt blob;
+  created_at_time : opt nat64;
+};
+
+type AllowanceArgs = record {
+  account : Account;
+  spender : Account;
+};
+
+type Allowance = record {
+  allowance : nat;
+  expires_at : opt nat64;
+};
+
+type TransferError = variant {
+  BadFee : record { expected_fee : nat };
+  InsufficientFunds : record { balance : nat };
+  TooOld;
+  CreatedInFuture : record { ledger_time : nat64 };
+  Duplicate : record { duplicate_of : nat };
+  TemporarilyUnavailable;
+  GenericError : record { message : text; error_code : nat };
+};
+
+type Result = variant { Ok : nat; Err : TransferError };
+type Value = variant {
+  Nat : nat;
+  Int : int;
+  Blob : blob;
+  Text : text;
+};
+
+type Block = variant {
+  Map : vec record { text; Value };
+};
+
+type GetBlocksArgs = record {
+  start : nat;
+  length : nat;
+};
+
+type GetBlocksResult = record {
+  log_length : nat;
+  blocks : vec Block;
+  archived_blocks : vec record {
+    start : nat;
+    length : nat;
+    callback : func (GetBlocksArgs) -> (GetBlocksResult) query;
+  };
+};
+
+service : {
+  // ICRC-1
+  icrc1_name : () -> (text) query;
+  icrc1_symbol : () -> (text) query;
+  icrc1_decimals : () -> (nat8) query;
+  icrc1_fee : () -> (nat) query;
+  icrc1_total_supply : () -> (nat) query;
+  icrc1_minting_account : () -> (opt Account) query;
+  icrc1_balance_of : (Account) -> (nat) query;
+  icrc1_metadata : () -> (vec record { text; Value }) query;
+  icrc1_supported_standards : () -> (vec record { name : text; url : text }) query;
+  icrc1_transfer : (TransferArg) -> (Result);
+  
+  // ICRC-2
+  icrc2_approve : (ApproveArg) -> (Result);
+  icrc2_allowance : (AllowanceArgs) -> (Allowance) query;
+  icrc2_transfer_from : (TransferFromArg) -> (Result);
+  
+  // ICRC-3
+  icrc3_get_blocks : (GetBlocksArgs) -> (GetBlocksResult) query;
+  icrc3_get_archives : () -> (vec record { canister_id : principal; start : nat; end : nat }) query;
+  icrc3_get_tip_certificate : () -> (opt record { certificate : blob; hash_tree : blob }) query;
+  icrc3_supported_block_types : () -> (vec record { block_type : text; url : text }) query;
+  
+  // Faucet
+  mint : (Account, nat) -> ();
+}

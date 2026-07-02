@@ -1,0 +1,67 @@
+// ===================================================
+// DID for Storage Canister
+// Privacy ICP (ICPP)
+//
+// Version -> 2.0.03
+// Date    -> 03 December 2025
+// Status  -> Public release ver:2 subver:0 release:03
+//
+// Code developed by @Troesma
+// Phase 2: Destruction guarantees
+// ===================================================
+
+// Errors
+// ERR.ALREADY_STORED | ERR.NOT_FOUND | ERR.ALREADY_SERVED |
+// ERR.UNAUTHORIZED | ERR.NOT_INITIALIZED | ERR.EXPIRED |
+// ERR.I1_NOT_DESTROYED | ERR.WITNESS_CHECK
+
+service : {
+  // Initialization (called 
+  // by Factory after spawn)
+  // -----------------------
+  init : (principal, nat64, principal, principal, principal) -> (variant { ok : null; err : text });
+
+  // Generate and encrypt CSRN for Alice (called by I1)
+  // Returns encrypted CSRN for Alice to decrypt client-side
+  // -------------------------------------------------------
+  init_csrn : (blob, principal) -> (variant { 
+    ok : record { nonce : blob; ciphertext : blob };
+    err : text
+  });
+
+  // Store package 
+  // (called by I1)
+  // --------------
+  store : (blob) -> (variant { ok : null; err : text });
+
+  // Retrieve package (called by I2)
+  // Verifies I1 destroyed via Witness before serving
+  // then logs to witness and self-destructs
+  // ------------------------------------------------
+  retrieve : () -> (variant { ok : blob; err : text });
+
+  // Get CSRN (called by I2 for Bob)
+  // --------------------------------
+  get_csrn : () -> (variant { ok : blob; err : text });
+
+  // Public read-only access to stored package
+  // (for Bob to discover I2 principal)
+  // -----------------------------------------
+  get_package : () -> (variant { ok : blob; err : text }) query;
+
+  // TTL info
+  // --------
+  get_ttl_info : () -> (record { 
+    deadline : nat64; 
+    current : nat64; 
+    expired : bool 
+  }) query;
+
+  // Ask to be killed
+  // ----------------
+  request_destruct : (principal) -> ();
+
+  // Diagnostics
+  // -----------
+  ping : () -> (text) query;
+}

@@ -1,0 +1,96 @@
+// ===================================================
+// Candid interface for crypto methods
+// Privacy ICP (ICPP)
+//
+// Version -> 2.0.03
+// Date    -> 3 December 2025
+// Status  -> Public release ver:2 subver:0 release:03
+//
+// Code developed by @Troesma
+// ===================================================
+
+type Hint = blob;
+type Capsule = blob;
+type DepositId = blob;
+
+type Account = record {
+  owner : blob;
+  subaccount : blob;
+};
+
+type VerifyArgs = record {
+  capsule : Capsule;
+  capability : blob;
+  recipient_account : Account;
+  context : blob;
+  encrypted_inner : blob;
+  csrn : blob;
+};
+
+// CreateTransferArgs
+type CreateTransferArgs = record {
+  deposit_id : DepositId;
+  i2_principal : principal;
+  amount : nat64;
+  csrn : blob;
+};
+
+// Verify
+type VerifyOk = record {
+  deposit_id : blob;
+  nullifier : opt blob;
+  transcript_digest : blob;
+  hint : blob;
+  i2_principal : blob;
+};
+
+// DecryptResult
+// (returned by decrypt_result)
+type DecryptResult = record {
+  plaintext : blob;
+  amount : nat64;
+  auth_key_hash_hex : text;
+};
+
+service : {
+  // BSGS cache 
+  // provisioning
+  init_cache_start : (nat32) -> (opt text);
+  add_cache_chunk : (blob) -> (opt text);
+  init_cache_finalize : () -> (opt text);
+
+  // Router binding
+  set_router : (principal) -> ();
+
+  // CREATE API 
+  // (Alice's send flow)
+  create_start : (CreateTransferArgs) -> (bool, nat64, text);
+  create_step : (nat64, nat32) -> (bool, bool, text);
+  create_result : (nat64) -> (bool, Capsule, blob, Hint, text);
+
+  // VERIFY API 
+  // (Bob's discovery flow)
+  verify_start : (VerifyArgs) -> (bool, nat64, text);
+  verify_step : (nat64, nat32) -> (bool, bool, text);
+  verify_result : (nat64) -> (bool, VerifyOk, text);
+
+  // DECRYPT API (I2's finalization flow)
+  // Multi-message decrypt API (I2 decryption flow)
+  decrypt_start : (blob, blob, blob, blob) -> (bool, nat64, text);
+  decrypt_step : (nat64, nat32) -> (bool, bool, text);
+  decrypt_result : (nat64) -> (bool, opt DecryptResult, text);
+
+  // CSRN encryption for 
+  // transit (called by Storage)
+  encrypt_csrn_for_transit : (blob, blob, blob, blob) -> (variant { Ok : blob; Err : text });
+
+  // Pre-warm BSGS tables
+  prewarm_bsgs : (nat64) -> (bool, bool, text);
+
+  // Parameters 
+  // commitment
+  get_params_commitment : () -> (blob) query;
+
+  // Lifecycle
+  self_destruct : () -> ();
+}

@@ -1,0 +1,20 @@
+{
+  "crypto": {
+    "ic": "yrto4-pqaaa-aaaai-atw6q-cai"
+  },
+  "factory": {
+    "ic": "tpf4c-uyaaa-aaaai-atxba-cai"
+  },
+  "icpp_ui": {
+    "ic": "tuaah-oaaaa-aaaai-atxdq-cai"
+  },
+  "noticeboard": {
+    "ic": "tie2w-zaaaa-aaaai-atxbq-cai"
+  },
+  "registry": {
+    "ic": "ttbgt-dyaaa-aaaai-atxda-cai"
+  },
+  "router": {
+    "ic": "tbhrk-piaaa-aaaai-atxaa-cai"
+  }
+}

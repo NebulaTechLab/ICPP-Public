@@ -1,0 +1,125 @@
+// ===================================================
+// DID for Witness Canister
+// Privacy ICP (ICPP)
+//
+// Version -> 2.0.02
+// Date    -> 01 December 2025
+// Status  -> Public release ver:2 subver:0 release:02
+//
+// Code developed by @Troesma
+// Phase 2: Destruction guarantees + auto-finalize
+// ===================================================
+
+// Common types
+// ============
+type Account   = record { owner : principal; subaccount : opt blob };
+type DepositId = blob;
+
+// Compact certified header
+// -> certified_hash = BLAKE2s-256(key="ICPP:witness", candid((policy_ver_lo8, tip_lo8)))
+// ======================================================================================
+type CertifiedHeader = record { policy_ver : nat32; certified_hash : blob; tip : nat };
+
+// Latest context tuple
+// --------------------
+type Ctx = record {
+  policy_ver : nat32;
+  router_cert : blob;
+  param_hash : blob;
+  proto_ver : nat32;
+  hints_mask : nat32;
+};
+
+// Init arguments (Phase 2)
+// ------------------------
+type InitArgs = record {
+  noticeboard : principal;
+  expected : vec principal;
+};
+
+// Errors
+// ERR.PAUSED | ERR.RATE_LIMIT | ERR.BAD_ARG | ERR.ALREADY_INITIALIZED
+
+service : {
+  // Initialization (called by 
+  // Factory after spawn)
+  // -------------------------
+  init : (InitArgs) -> (variant { ok : null; err : text });
+
+  // Discovery
+  // ---------
+  supported_standards : () -> (vec record { name : text; url : text }) query;
+  get_header : () -> (CertifiedHeader) query;
+
+  // Fetch latest witnessed context 
+  // (and the same cert hash used for feed)
+  // --------------------------------------
+  get_latest_ctx : () -> (opt Ctx, blob) query;
+
+  // Context notification
+  // Emits a compact ctx event so clients 
+  // can track policy or parameter changes
+  // =====================================
+  announce_ctx : (record {
+    policy_ver : nat32;
+    router_cert : blob;
+    param_hash : blob;
+    proto_ver : nat32;
+    hints_mask : nat32;
+  }) -> (variant { ok : null; err : text });
+
+  // ---------------------------------
+  // Append-only event log 
+  // (permissionless and rate-limited)
+  // ---------------------------------
+
+  // Ingress (called by I1)
+  // ----------------------
+  log_ingress : (record {
+    deposit_id : DepositId;
+    ts : nat64;
+    bucket : nat32;
+    client_ctx_digest : blob
+  }) -> (variant { ok : null; err : text });
+
+  // Egress (called by I2)
+  // ---------------------
+  log_egress : (record {
+    deposit_id : DepositId;
+    ts : nat64;
+    recipient : Account;
+    meta_digest : blob
+  }) -> (variant { ok : null; err : text });
+
+  // Storage commit 
+  // (called by Storage)
+  // -------------------
+  log_storage_commit : (record {
+    hint : blob;
+    storage_id : principal;
+  }) -> (variant { ok : null; err : text });
+
+  // Destruct intent (called by I1, I2, Storage before self-destruct)
+  // Triggers auto-finalize when all expected canisters logged
+  // ----------------------------------------------------------------
+  log_destruct_intent : (record {
+    canister_id : principal;
+    ts : nat64;
+  }) -> (variant { ok : null; err : text });
+
+  // Query -> check if a canister has logged destruction
+  // Used by Storage to verify I1 destroyed before serving
+  // Used by I2 to verify Storage destroyed before self-destruct
+  // -----------------------------------------------------------
+  is_destroyed : (principal) -> (bool) query;
+
+  // Opaque event feed (compact binary records)
+  // -> 'cert' must match get_header().certified_hash on the client
+  // --------------------------------------------------------------
+  get_events : (record { from : nat; limit : nat })
+             -> (record { events : vec blob; tip : nat; cert : blob }) query;
+
+  // Ask to be killed
+  // ----------------
+  request_destruct : (principal) -> ();
+}

@@ -1,0 +1,46 @@
+// ===================================================
+// DID for Registry Canister
+// Privacy ICP (ICPP)
+//
+// Version -> 2.0.01
+// Date    -> 25 November 2025
+// Status  -> Public release ver:2 subver:0 release:01
+//
+// Code developed by @Troesma
+// ===================================================
+
+type Account = record {
+  owner : blob;
+  subaccount : blob;
+};
+
+type EncodedBases = record {
+  hatP : blob;
+  hatQ : blob;
+};
+
+type Profile = record {
+  owner       : principal;
+  account     : Account;
+  alias       : opt text;
+  bases       : EncodedBases;
+  created_at  : nat64;
+  last_update : nat64;
+};
+
+service : {
+  // Register or update 
+  // caller’s FE profile
+  register : (opt text, Account, EncodedBases) -> ();
+
+  // Get full profile by principal 
+  // (for UIs, address books, etc.)
+  getByOwner : (principal) -> (opt Profile) query;
+
+  // Get just FE encodings 
+  // (for send flow)
+  getBases : (principal) -> (opt EncodedBases) query;
+
+  // Get associated ledger account
+  getAccount : (principal) -> (opt Account) query;
+}

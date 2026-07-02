@@ -1,0 +1,250 @@
+// ===================================================
+// DID for Router Canister
+// Privacy ICP (ICPP)
+//
+// Version -> 2.1.01
+// Date    -> 17 December 2025
+// Status  -> Public release ver:2 subver:1 release:01
+//
+// Code developed by @Troesma
+// ===================================================
+
+// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Notes on hashing domains
+//
+// -> deposit_id derivation uses keyed BLAKE2s-256 with key "ICPP:id"
+// -> subaccount derivation uses keyed BLAKE2s-256 with key "ICPP:sub"
+// -> certified config hash uses keyed BLAKE2s-256 with key "ICPP:cfg"
+//
+// The algorithm label exposed in Config.hash_alg is currently blake2s-256
+// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+// Common types
+// ============
+type Account   = record { 
+  owner : principal; 
+  subaccount : opt blob 
+};
+type Amount    = nat;
+type DepositId = blob;
+
+// Configuration (query-certified by Router)
+// The certified hash placed in certified data commits to BOTH
+// the full configuration AND the current event stream tip
+// ===========================================================
+type Config = record {
+  // Policy version for 
+  // behavior/format gating
+  // ----------------------
+  policy_ver : nat32;
+
+  // Hash algorithm used for ids/certification 
+  // (currently "blake2s-256")
+  // -----------------------------------------
+  hash_alg : text;
+
+  // Fee in basis 
+  // points (0..10_000)
+  // ------------------
+  deposit_fee_bps : nat16;
+
+  // Spawn cycles requirement
+  // Charged from user and
+  // converted to cycles via CMC
+  // ---------------------------
+  spawn_cycles_target : nat;
+
+  // Cycles allocated to Crypto
+  // canister per transaction
+  // -------------------------
+  crypto_cycles_per_tx : nat;
+
+  // Cycles allocated to Noticeboard
+  // canister per transaction
+  // -------------------------------
+  noticeboard_cycles_per_tx : nat;
+
+  // Cycles allocated to Registry
+  // canister per transaction
+  // ----------------------------
+  registry_cycles_per_tx : nat;
+
+  // Allowed payload sizes
+  // ---------------------
+  size_buckets : vec nat32;
+
+  // Deposit TTL 
+  // (seconds)
+  // -----------
+  ttl_secs : nat64;
+
+  // Attestation code hashes 
+  // (as published by Factory)
+  // -------------------------
+  code_hashes : record { i1 : blob; i2 : blob; witness : blob };
+
+  // Internal principals 
+  // wired at deploy
+  // -------------------
+  factory : Principal;
+  noticeboard : Principal;
+  registry : Principal;
+  crypto : Principal;
+  
+  // ICP accounts where 
+  // fees + buffers live
+  // -------------------
+  fee_accounts : record {
+    treasury : Account;
+    buffer : Account;
+  };
+
+  // Rate limiting 
+  // parameters
+  // -------------
+  rate : record {
+    window_secs : nat64;
+    max_calls_per_principal : nat32;
+  };
+
+  // CMC for ICP -> cycles conversion
+  // --------------------------------
+  cmc : principal;
+
+  // Treasury subaccounts for fee distribution
+  // Random selection from fee_subs for privacy
+  // Remainder swept to remainder_sub
+  // ------------------------------------------
+  treasury_fee_subs : vec blob;
+  treasury_remainder_sub : blob;
+};
+
+type State = variant { Allocated; Created; Sealed; Finalized; Reclaimed };
+
+// Emitted when a deposit 
+// becomes Sealed
+// ----------------------
+type Notice = record { deposit_id : DepositId; hint : blob; bucket : nat32; ts : nat64 };
+
+service : {
+  // Discovery
+  // ---------
+  get_config : () -> (record { config : Config; certified_hash : blob }) query;
+  supported_standards : () -> (vec record { name : text; url : text }) query;
+
+  get_deposit_fee_bps : () -> (nat16) query;
+
+  get_spawn_cycles : () -> (nat) query;
+
+  // Treasury info for 
+  // client-side fee routing
+  // -----------------------
+  get_treasury_info : () -> (record {
+    treasury_owner : principal;
+    fee_subs : vec blob;
+    remainder_sub : blob;
+  }) query;
+
+  deposit_alloc : (
+    record {
+      recipient_hint_pref : nat32;
+    }
+  ) -> (variant { 
+      ok : record {
+        deposit_id : DepositId;
+        router_account : Account;
+        treasury_account : Account;
+        spawn_fee_estimate : nat;
+        memo : opt blob;
+      };
+      err : text;
+    });
+
+  // Operational status 
+  // for adaptive delay
+  // ------------------
+  get_operational_status : () -> (record {
+    cycles_balance : nat;
+    spawns_available : nat;
+    recommended_delay_ms : nat;
+  }) query;
+
+  // Administration 
+  // (restricted)
+  // ----------------
+  initialize_admins : (vec principal) -> (variant { ok : null; err : text });
+  set_admins : (vec principal) -> (variant { ok : null; err : text });
+  set_config : (Config) -> (variant { ok : null; err : text });
+  pause : () -> (variant { ok : null; err : text });
+  unpause : () -> (variant { ok : null; err : text });
+
+  // Admin emergency sweep 
+  // from any subaccount
+  // ---------------------
+  admin_sweep : (blob, Account, Amount) -> (variant { ok : nat; err : text });
+
+  // Deposit flow
+  // ============
+  deposit_prepare : (
+    DepositId,
+    nat
+  ) -> (variant { 
+      ok : record {
+        i1_id : principal;
+        i2_id : principal;
+        storage_ids : vec principal;
+        actual_spawn_fee : nat;
+      };
+      err : text;
+    });
+
+  seal_push : (DepositId) -> (variant { ok : null; err : text });
+  get_notice : (DepositId) -> (opt Notice) query;
+
+  // Get ephemeral canister info for a deposit
+  // -----------------------------------------
+  get_deposit_info : (DepositId) -> (opt record {
+    i1 : principal;
+    i2 : principal;
+    witness : principal;
+    storage : vec principal;
+  }) query;
+
+  // Finalize (egress) 
+  // -> REQUIRES state = Sealed
+  // -> Receiver gets full amount
+  // ============================
+  finalize : (
+    DepositId,
+    blob,     // -> Capsule
+    blob,     // -> capability_or_proof
+    Account,  // -> Recipient public account
+    Amount    // -> Amount (decrypted from Inner by I2)
+  ) -> (variant { ok : record { tx_id : nat; fees_charged : Amount }; err : text });
+
+  // Reclaim (refund)
+  // -> Allowed after expiry
+  // -> Payer receives full amount
+  // =============================
+  reclaim : (DepositId) -> (variant { ok : record { tx_id : nat; fees_charged : Amount }; err : text });
+
+  // Status + events
+  // ===============
+  status : (DepositId) -> (variant { ok : record { state : State; expires_at : nat64 }; err : text }) query;
+
+  // Buffer and mixer balance 
+  // (update call because it awaits ledger)
+  // --------------------------------------
+  buffer_balance : () -> (variant { ok : nat; err : text });
+  mixer_balance : () -> (variant { ok : nat; err : text });
+
+  // Pre-upgrade sanity check
+  // ------------------------
+  can_upgrade : () -> (variant { ok : null; err : text }) query;
+
+  // Opaque event feed (compact binary records)
+  // -> 'cert' must equal the cert hash from get_config
+  // ==================================================
+  get_events : (record { from : nat; limit : nat })
+             -> (record { events : vec blob; tip : nat; cert : blob }) query;
+}

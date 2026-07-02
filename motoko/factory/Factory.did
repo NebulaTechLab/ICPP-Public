@@ -1,0 +1,110 @@
+// ===================================================
+// DID for Factory Canister
+// Privacy ICP (ICPP)
+//
+// Version -> 2.0.03
+// Date    -> 03 December 2025
+// Status  -> Public release ver:2 subver:0 release:03
+//
+// Code developed by @Troesma
+// Phase 2: Destruction guarantees
+// ===================================================
+
+// Common types
+// ============
+type Account = record { 
+  owner : principal; 
+  subaccount : opt blob 
+};
+
+type CodeHashes = record { 
+  i1 : blob; 
+  i2 : blob; 
+  storage : blob; 
+  witness : blob 
+};
+
+type Spawned = record {
+  i1          : principal;
+  i2          : principal;
+  storage     : vec principal;
+  witness     : principal;
+  spawn_proof : blob;
+  tip         : nat;
+};
+
+spawn_triplet : (nat64, principal, principal, principal) -> (variant { ok : Spawned; err : text });
+
+// Certified header (compact):
+// certified_hash = BLAKE2s-256(key="ICPP:factory", candid((policy_ver : nat32, tip : nat8)))
+// ==========================================================================================
+type CertifiedHeader = record { policy_ver : nat32; certified_hash : blob; tip : nat };
+
+// Errors
+// ERR.UNAUTHORIZED | ERR.PAUSED | ERR.BAD_WASM | ERR.MISSING_WASM |
+// ERR.TEMPORARILY_UNAVAILABLE | ERR.INTERNAL | ERR.INSUFFICIENT_CYCLES
+
+service : {
+  // Discovery
+  // ---------
+  get_header : () -> (CertifiedHeader) query;
+  get_code_hashes : () -> (CodeHashes) query;
+  supported_standards : () -> (vec record { name : text; url : text }) query;
+
+  // Administration
+  // --------------
+  initialize_admins : (vec principal) -> (variant { ok : null; err : text });
+  set_admins : (vec principal) -> (variant { ok : null; err : text });
+  pause : () -> (variant { ok : null; err : text });
+  unpause : () -> (variant { ok : null; err : text });
+  set_router : (principal) -> (variant { ok : null; err : text });
+  
+  // Fallback policy
+  // ---------------
+  set_fallback_policy : (nat, nat, bool) -> (variant { ok : null; err : text });
+  get_fallback_policy : () -> (record { max_spawns : nat; spawns_used : nat; reserve_floor : nat }) query;
+
+
+  // WASM management (chunked upload)
+  // --------------------------------
+  upload_wasm_chunk_i1 : (blob, bool) -> (variant { ok : null; err : text });
+  upload_wasm_chunk_i2 : (blob, bool) -> (variant { ok : null; err : text });
+  upload_wasm_chunk_storage : (blob, bool) -> (variant { ok : null; err : text });
+  upload_wasm_chunk_witness : (blob, bool) -> (variant { ok : null; err : text });
+
+  // Legacy single-blob upload 
+  // (for small WASMs)
+  // -------------------------
+  set_wasm_i1 : (blob) -> (variant { ok : null; err : text });
+  set_wasm_i2 : (blob) -> (variant { ok : null; err : text });
+  set_wasm_storage : (blob) -> (variant { ok : null; err : text });
+  set_wasm_witness : (blob) -> (variant { ok : null; err : text });
+
+  // Spawn ephemeral infrastructure
+  // (called by Router during prepare_deposit)
+  // -----------------------------------------
+  spawn_triplet : (nat64, principal, principal, principal) -> (variant { ok : Spawned; err : text });
+
+  // BSGS cache initialization 
+  // (one-time at Factory init)
+  // --------------------------
+  init_bsgs_cache : () -> (variant { ok : null; err : text });
+
+  // Killing children
+  // ----------------
+  cleanup_child : (principal) -> ();
+
+  // Metrics
+  // -------
+  get_wasm_witness_size : () -> (nat) query;
+  get_cycle_metrics : () -> (record {
+    factory_balance : nat;
+    total_consumed : nat;
+    min_required_per_spawn : nat;
+  }) query;
+
+  // Event stream (opaque compact records)
+  // -------------------------------------
+  get_events : (record { from : nat; limit : nat })
+             -> (record { events : vec blob; tip : nat; cert : blob }) query;
+}

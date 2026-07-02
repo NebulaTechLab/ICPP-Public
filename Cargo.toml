@@ -1,0 +1,6 @@
+[workspace]
+members = ["crypto"]
+resolver = "2"
+
+[workspace.lints.rust]
+non_snake_case = "allow"

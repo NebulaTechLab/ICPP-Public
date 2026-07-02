@@ -1,0 +1,84 @@
+// ===================================================
+// DID for I2 (receive-side) Canister
+// Privacy ICP (ICPP)
+//
+// Version -> 2.0.02
+// Date    -> 01 December 2025
+// Status  -> Public release ver:2 subver:0 release:02
+//
+// Code developed by @Troesma
+// Phase 2: Destruction guarantees
+// ===================================================
+
+// Common types
+// ============
+type Account   = record { owner : principal; subaccount : opt blob };
+type Amount    = nat;
+type DepositId = blob;
+
+// Async job status
+// ================
+type JobStatus = variant {
+  pending;
+  processing;
+  done : record {
+    tx_id : nat;
+    fees_charged : Amount;
+    csrn : blob;
+  };
+  error : text;
+};
+
+service : {
+  // Initialization (called by 
+  // Factory after spawn)
+  // -------------------------
+  init : (record {
+    router : principal;
+    storage : vec principal;
+    crypto : principal;
+    witness : principal;
+    noticeboard : principal;
+    factory : principal;
+  }) -> (variant { ok : null; err : text });
+
+  // Discovery
+  // ---------
+  supported_standards : () -> (vec record { name : text; url : text }) query;
+
+  // Administration (only 
+  // callable before blackhole)
+  // --------------------------
+  set_admins : (vec principal) -> (variant { ok : null; err : text });
+  pause : () -> (variant { ok : null; err : text });
+  unpause : () -> (variant { ok : null; err : text });
+  set_services : (record { 
+    router : principal; 
+    crypto : principal; 
+    witness : opt principal 
+  }) -> (variant { ok : null; err : text });
+
+  // Async finalize 
+  // (polling-friendly)
+  // ------------------
+  finalize_start : (record {
+    deposit_id : DepositId;
+    auth_key_hash_hex : text;
+    recipient : Account;
+  }) -> (variant { ok : nat64; err : text });
+
+  finalize_status : (nat64) -> (variant { ok : JobStatus; err : text }) query;
+
+  // Reset stuck job 
+  // (allows retry after timeout)
+  // ----------------------------
+  reset_job : (record {
+    deposit_id : DepositId;
+    auth_key_hash_hex : text;
+  }) -> (variant { ok : null; err : text });
+
+  // Diagnostics
+  // -----------
+  ping : () -> (text) query;
+
+}

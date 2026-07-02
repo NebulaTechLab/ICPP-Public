@@ -1,0 +1,86 @@
+// ===================================================
+// DID for I1 (send-side) Canister
+// Privacy ICP (ICPP)
+//
+// Version -> 2.0.03
+// Date    -> 05 December 2025
+// Status  -> Public release ver:2 subver:0 release:03
+//
+// Code developed by @Troesma
+// ===================================================
+
+// Common types
+// ============
+type Account = record { owner : principal; subaccount : opt blob };
+type Amount = nat;
+type DepositId = blob;
+
+// Privacy-safe client context
+// ===========================
+type ClientCtx = record {
+  proto_ver : nat32;
+  param_hash : blob;
+  ctx_commit : blob;
+  hints_mask : nat32;
+  expiry : nat64;
+};
+
+// Sealed package from Crypto canister
+// ===================================
+type SealedPackage = record {
+  hint : blob;
+  capsule : blob;
+  inner : blob;
+};
+
+service : {
+  // Initialization (called by 
+  // Factory after spawn)
+  // -------------------------
+  init : (record {
+    storage : vec principal;
+    noticeboard : principal;
+    witness : principal;
+    ttl : nat64;
+    factory : principal;
+  }) -> (variant { ok : null; err : text });
+
+  // Discovery
+  // ---------
+  supported_standards : () -> (vec record { name : text; url : text }) query;
+  get_services : () -> (record { 
+    witness : opt principal; 
+    storage : vec principal; 
+    noticeboard : principal 
+  }) query;
+
+  // Administration (only 
+  // callable before blackhole)
+  // --------------------------
+  set_admins : (vec principal) -> (variant { ok : null; err : text });
+  pause : () -> (variant { ok : null; err : text });
+  unpause : () -> (variant { ok : null; err : text });
+  set_services : (record { witness : opt principal }) -> (variant { ok : null; err : text });
+
+  // CSRN preparation -> request encrypted CSRN for Alice
+  // (called before store_and_announce)
+  // ----------------------------------------------------
+  prepare_deposit : (DepositId) -> (variant { 
+    ok : record { nonce : blob; ciphertext : blob }; 
+    err : text 
+  });
+
+  // Store sealed package and announce to noticeboard
+  // then log to Witness and self-destruct
+  // ------------------------------------------------
+  store_and_announce : (record {
+    package : SealedPackage;
+    deposit_id : DepositId;
+    client_ctx : opt ClientCtx;
+  }) -> (variant { ok : null; err : text });
+
+  // Diagnostics
+  // -----------
+  get_witness_stats : () -> (record { failures : nat64 }) query;
+  ping : () -> (text) query;
+}
