@@ -1,8 +1,8 @@
 ### Repository of the ICPP platform
 
-Repository includes all necessary RUST, Motoko and TypeScript files
+Included are all necessary RUST, Motoko and TypeScript files
 
-ArXiV (theory reference) paper<br>
+ArXiV (theory) paper<br>
 **A Privacy Protocol Using Ephemeral Intermediaries and a Rank-Deficient Matrix Power Function (RDMPF)**<br>
 Eduardo Salazar<br>
 Nebula Technology Lab<br>
