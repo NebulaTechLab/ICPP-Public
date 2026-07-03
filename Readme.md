@@ -35,5 +35,25 @@ This model allows us to open the source code immediately while preventing direct
 
 We believe this creates the healthiest environment for long-term growth — supporting serious builders while protecting the original investment.
 
+### CURRENT STATUS
+ 
+**The original mainnet deployment of the ICPP protocol by Nebula Technology Lab has been sunsetted. The original endpoint is no longer reachable, and Nebula Technology Lab does not operate a live production network service.**
+ 
+**However, this repository remains active as an open development project.** We welcome future collaboration, contributions, and ecosystem efforts to build upon this codebase as a public good for the Internet Computer Protocol (ICP) ecosystem.
+
+Therefore, by accessing this repository you acknowledge and agree to the following terms:
+
+**No Active Operations** — Nebula Technology Lab does not operate, manage, host, or control any live endpoints, user interfaces, or active canisters for this protocol.
+
+**Total Disclaimer of Liability** — To the maximum extent permitted by applicable law, Nebula Technology Lab, its affiliates, and its contributors expressly disclaim any and all liability, data loss, financial loss, or damages arising from your use, deployment, or attempted interaction with this software or any past deployments on the ICP network.
+
+**Active Collaboration** — We invite developers to collaborate on the evolution of this code.
+
+**Software Provided "As-Is"** — All source code and documentation are provided "as-is" under the licensing terms adopted.
+
+**User Assumption of Risk** — Any deployment, compilation, forks, or execution of this source code is done entirely at your own risk and sole responsibility.
+
+**Reach Out** — If your team is interested in co-maintaining this repository or exploring joint development, please contact us at **info@nebulalab.ae**
+
 ### Questions or Commercial Use?
-If you are unsure whether your intended use is permitted, or if you would like to discuss a commercial waiver or alternative licensing arrangement, please contact us at **info@nebulalab.ae.**
+If you are unsure whether your intended use is permitted, or if you would like to discuss a commercial waiver or alternative licensing arrangement, please contact us at **info@nebulalab.ae**
